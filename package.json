@@ -1,0 +1,28 @@
+{
+  "name": "thaqalaynscraper",
+  "version": "1.0.0",
+  "description": "Thaqalayn.net Web Scraper",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jenusi/ThaqalaynScraper.git"
+  },
+  "keywords": [
+    "Thaqalayn",
+    "WebScraper",
+    "Web",
+    "Scraper"
+  ],
+  "author": "jenusi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jenusi/ThaqalaynScraper/issues"
+  },
+  "homepage": "https://github.com/jenusi/ThaqalaynScraper#readme",
+  "dependencies": {
+    "puppeteer": "^21.1.0"
+  }
+}
