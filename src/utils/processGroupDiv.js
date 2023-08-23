@@ -46,7 +46,12 @@ const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapter
       colorType = "majhul";
     } else {
       colorType = "daif";
+      if (grade == "لم يخرجه") {
+        console.log(grade)
+        colorType = "didNotInclude";
+      }
     }
+
     const author = await gradingElement.$eval("div.font-semibold", (div) => div.textContent.trim());
     const authorFolder = author
       .split(" ")
@@ -64,16 +69,18 @@ const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapter
     const filteredGradings = [hadith.gradings[hadith.gradings.length - 1]];
     const filteredHadith = { ...hadith, gradings: filteredGradings };
 
-    // Make sure the structure is initialized
+    // Make sure the structure is initialized and make sure that it's not didNotInclude
+    if(colorType != "didNotInclude") {
     if (!volumes.authors[authorFolder]) volumes.authors[authorFolder] = { sahih: {}, majhul: {}, daif: {} };
     if (!volumes.authors[authorFolder][colorType][volume]) volumes.authors[authorFolder][colorType][volume] = {};
     if (!volumes.authors[authorFolder][colorType][volume][book]) volumes.authors[authorFolder][colorType][volume][book] = {};
     if (!volumes.authors[authorFolder][colorType][volume][book][chapter]) volumes.authors[authorFolder][colorType][volume][book][chapter] = {};
     if (!volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle])
       volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle] = [];
+    volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle].push(filteredHadith);
+    }
 
     uniqueColorTypes.add(colorType); // Add this colorType to our set
-    volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle].push(filteredHadith);
   }
 
   // Now that we've processed all gradings, push the hadith to allAhadith and colorType
@@ -85,6 +92,7 @@ const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapter
 
   // Add the hadith to the corresponding colorType volumes
   for (const colorType of uniqueColorTypes) {
+    console.log(colorType);
     if (!volumes[colorType][volume]) volumes[colorType][volume] = {};
     if (!volumes[colorType][volume][book]) volumes[colorType][volume][book] = {};
     if (!volumes[colorType][volume][book][chapter]) volumes[colorType][volume][book][chapter] = {};

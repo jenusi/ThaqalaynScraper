@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const mergeData = require("./mergeData");
 
-const writeFiles = (volumes, existingAuthors, existingSahih, existingMajhul, existingDaif, existingNoGradings, existingAllAhadith) => {
+const writeFiles = (volumes, existingAuthors, existingSahih, existingMajhul, existingDaif, existingNoGradings, existingAllAhadith, existingDidNotInclude) => {
   const ahadithPath = path.join(__dirname, "./../ahadith");
   if (!fs.existsSync(ahadithPath)) {
     fs.mkdirSync(ahadithPath);
@@ -19,6 +19,7 @@ const writeFiles = (volumes, existingAuthors, existingSahih, existingMajhul, exi
   mergeData(existingDaif, volumes.daif);
   mergeData(existingNoGradings, volumes.noGradings);
   mergeData(existingAllAhadith, volumes.allAhadith);
+  mergeData(existingDidNotInclude, volumes.didNotInclude);
 
   // Save the merged general data
   fs.writeFileSync(path.join(generalPath, "sahih.json"), JSON.stringify(existingSahih, null, 2));
@@ -26,6 +27,7 @@ const writeFiles = (volumes, existingAuthors, existingSahih, existingMajhul, exi
   fs.writeFileSync(path.join(generalPath, "daif.json"), JSON.stringify(existingDaif, null, 2));
   fs.writeFileSync(path.join(generalPath, "no-gradings.json"), JSON.stringify(existingNoGradings, null, 2));
   fs.writeFileSync(path.join(generalPath, "all-ahadith.json"), JSON.stringify(existingAllAhadith, null, 2));
+  fs.writeFileSync(path.join(generalPath, "did-not-include.json"), JSON.stringify(existingDidNotInclude, null, 2));
 
   // Merge new data into existing data for authors
   for (const [authorFolder, authorVolumes] of Object.entries(volumes.authors)) {

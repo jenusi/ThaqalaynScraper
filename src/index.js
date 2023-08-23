@@ -26,6 +26,7 @@ async function initializeData() {
   const existingDaif = await loadExistingData(path.join(__dirname, "ahadith", "general", "daif.json"));
   const existingNoGradings = await loadExistingData(path.join(__dirname, "ahadith", "general", "no-gradings.json"));
   const existingAllAhadith = await loadExistingData(path.join(__dirname, "ahadith", "general", "all-ahadith.json"));
+  const existingDidNotInclude = await loadExistingData(path.join(__dirname, "ahadith", "general", "all-ahadith.json"));
 
   return {
     existingAuthors,
@@ -33,7 +34,8 @@ async function initializeData() {
     existingMajhul,
     existingDaif,
     existingNoGradings,
-    existingAllAhadith
+    existingAllAhadith,
+    existingDidNotInclude
   };
 }
 
@@ -44,10 +46,9 @@ async function main() {
     existingMajhul,
     existingDaif,
     existingNoGradings,
-    existingAllAhadith
+    existingAllAhadith,
+    existingDidNotInclude
   } = await initializeData();
-
-  console.log(existingAllAhadith);
 
   const { lastVolume, lastBook, lastChapter } = findLastScraped(existingAllAhadith);
   console.log(lastVolume, lastBook, lastChapter);
@@ -59,9 +60,10 @@ async function main() {
     daif: existingDaif,
     noGradings: existingNoGradings,
     allAhadith: existingAllAhadith,
-    authors: existingAuthors
+    authors: existingAuthors,
+    didNotInclude: existingDidNotInclude
   };
-  const existingData = [existingAuthors, existingSahih, existingMajhul, existingDaif, existingNoGradings, existingAllAhadith];
+  const existingData = [existingAuthors, existingSahih, existingMajhul, existingDaif, existingNoGradings, existingAllAhadith, existingDidNotInclude];
 
   await processBook(browser, volumes, lastVolume, lastBook, lastChapter, STOP_AT_BOOK, existingData);
 }
