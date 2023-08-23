@@ -2,8 +2,74 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 
-const STOP_AT_BOOK = 9;
+const STOP_AT_BOOK = 12;
 
+const loadExistingData = (filePath) => {
+  try {
+    const rawData = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(rawData);
+  } catch (err) {
+    return {};
+  }
+};
+
+
+const loadExistingAuthorData = () => {
+  const authors = {};
+  const ahadithPath = path.join(__dirname, "ahadith");
+  const authorFolders = fs.readdirSync(ahadithPath).filter(folder => folder !== 'general');
+
+  for (const authorFolder of authorFolders) {
+    authors[authorFolder] = {
+      sahih: loadExistingData(path.join(ahadithPath, authorFolder, "sahih.json")),
+      majhul: loadExistingData(path.join(ahadithPath, authorFolder, "majhul.json")),
+      daif: loadExistingData(path.join(ahadithPath, authorFolder, "daif.json")),
+    };
+  }
+  return authors;
+};
+
+const mergeData = (target, source) => {
+  for (const key of Object.keys(source)) {
+    if (source[key] instanceof Object) {
+      if (!target[key]) target[key] = {};
+      mergeData(target[key], source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+};
+
+const existingAuthors = loadExistingAuthorData();
+
+const existingSahih = loadExistingData(path.join(__dirname, "ahadith", "general", "sahih.json"));
+const existingMajhul = loadExistingData(path.join(__dirname, "ahadith", "general", "majhul.json"));
+const existingDaif = loadExistingData(path.join(__dirname, "ahadith", "general", "daif.json"));
+const existingNoGradings = loadExistingData(path.join(__dirname, "ahadith", "general", "no-gradings.json"));
+const existingAllAhadith = loadExistingData(path.join(__dirname, "ahadith", "general", "all-ahadith.json"));
+
+
+const findLastScraped = (allAhadith) => {
+  let lastVolume = 0;
+  let lastBook = 0;
+  let lastChapter = 0;
+
+  for (const [volume, books] of Object.entries(allAhadith)) {
+    lastVolume = Math.max(lastVolume, Number(volume));
+    for (const [book, chapters] of Object.entries(books)) {
+      if (Number(volume) === lastVolume) {
+        lastBook = Math.max(lastBook, Number(book));
+      }
+      for (const [chapter, _] of Object.entries(chapters)) {
+        if (Number(volume) === lastVolume && Number(book) === lastBook) {
+          lastChapter = Math.max(lastChapter, Number(chapter));
+        }
+      }
+    }
+  }
+
+  return { lastVolume, lastBook, lastChapter };
+};
 const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapterTitle) => {
   const gradingDiv = await groupDiv.waitForSelector('div[style="opacity: 1; height: auto;"] > div.overflow-none', { timeout: 1750 }).catch(() => null);
 
@@ -113,20 +179,42 @@ const writeFiles = (volumes) => {
     fs.mkdirSync(generalPath);
   }
 
-  fs.writeFileSync(path.join(generalPath, "sahih.json"), JSON.stringify(volumes.sahih, null, 2));
-  fs.writeFileSync(path.join(generalPath, "majhul.json"), JSON.stringify(volumes.majhul, null, 2));
-  fs.writeFileSync(path.join(generalPath, "daif.json"), JSON.stringify(volumes.daif, null, 2));
-  fs.writeFileSync(path.join(generalPath, "no-gradings.json"), JSON.stringify(volumes.noGradings, null, 2));
-  fs.writeFileSync(path.join(generalPath, "all-ahadith.json"), JSON.stringify(volumes.allAhadith, null, 2));
+  // Merge new data into existing general data
+  mergeData(existingSahih, volumes.sahih);
+  mergeData(existingMajhul, volumes.majhul);
+  mergeData(existingDaif, volumes.daif);
+  mergeData(existingNoGradings, volumes.noGradings);
+  mergeData(existingAllAhadith, volumes.allAhadith);
 
+  // Save the merged general data
+  fs.writeFileSync(path.join(generalPath, "sahih.json"), JSON.stringify(existingSahih, null, 2));
+  fs.writeFileSync(path.join(generalPath, "majhul.json"), JSON.stringify(existingMajhul, null, 2));
+  fs.writeFileSync(path.join(generalPath, "daif.json"), JSON.stringify(existingDaif, null, 2));
+  fs.writeFileSync(path.join(generalPath, "no-gradings.json"), JSON.stringify(existingNoGradings, null, 2));
+  fs.writeFileSync(path.join(generalPath, "all-ahadith.json"), JSON.stringify(existingAllAhadith, null, 2));
+
+  // Merge new data into existing data for authors
   for (const [authorFolder, authorVolumes] of Object.entries(volumes.authors)) {
+    if (!existingAuthors[authorFolder]) {
+      existingAuthors[authorFolder] = {
+        sahih: {},
+        majhul: {},
+        daif: {}
+      };
+    }
+
+    mergeData(existingAuthors[authorFolder].sahih, authorVolumes.sahih);
+    mergeData(existingAuthors[authorFolder].majhul, authorVolumes.majhul);
+    mergeData(existingAuthors[authorFolder].daif, authorVolumes.daif);
+
     const authorPath = path.join(ahadithPath, authorFolder);
     if (!fs.existsSync(authorPath)) {
       fs.mkdirSync(authorPath);
     }
-    fs.writeFileSync(path.join(authorPath, "sahih.json"), JSON.stringify(authorVolumes.sahih, null, 2));
-    fs.writeFileSync(path.join(authorPath, "majhul.json"), JSON.stringify(authorVolumes.majhul, null, 2));
-    fs.writeFileSync(path.join(authorPath, "daif.json"), JSON.stringify(authorVolumes.daif, null, 2));
+
+    fs.writeFileSync(path.join(authorPath, "sahih.json"), JSON.stringify(existingAuthors[authorFolder].sahih, null, 2));
+    fs.writeFileSync(path.join(authorPath, "majhul.json"), JSON.stringify(existingAuthors[authorFolder].majhul, null, 2));
+    fs.writeFileSync(path.join(authorPath, "daif.json"), JSON.stringify(existingAuthors[authorFolder].daif, null, 2));
   }
 };
 
@@ -136,17 +224,20 @@ const writeFiles = (volumes) => {
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   });
 
-  let volume = 1;
-  let book = 0;
-  let chapter = 0;
+  const existingAllAhadith = loadExistingData(path.join(__dirname, "ahadith", "general", "all-ahadith.json"));
+  const { lastVolume, lastBook, lastChapter } = findLastScraped(existingAllAhadith);
+
+  let volume = lastVolume || 1;
+  let book = lastBook || 0;
+  let chapter = lastChapter || 0;
   let consecutiveBookFailures = 0;
   const volumes = {
-    sahih: {},
-    majhul: {},
-    daif: {},
-    noGradings: {},
-    allAhadith: {},
-    authors: {},
+    sahih: existingSahih,
+    majhul: existingMajhul,
+    daif: existingDaif,
+    noGradings: existingNoGradings,
+    allAhadith: existingAllAhadith,
+    authors: existingAuthors
   };
 
   while (true) {
