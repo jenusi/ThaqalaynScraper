@@ -5,8 +5,8 @@ const path = require("path");
 const STOP_AT_BOOK = 9;
 
 const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapterTitle) => {
-  const gradingDiv = await groupDiv.waitForSelector('div[style="opacity: 1; height: auto;"] > div.overflow-none', { timeout: 250 }).catch(() => null);
-  
+  const gradingDiv = await groupDiv.waitForSelector('div[style="opacity: 1; height: auto;"] > div.overflow-none', { timeout: 1750 }).catch(() => null);
+
   const hadith = {
     number: await groupDiv.$eval("h1", (h1) => h1.textContent.trim()),
     url: await groupDiv.$eval("a", (a) => a.href),
@@ -41,19 +41,34 @@ const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapter
   const gradingList = await gradingDiv.$$("li > div");
   const uniqueColorTypes = new Set();
 
+  let colorType;
+
   for (const gradingElement of gradingList) {
     const grade = await gradingElement.$eval("span.nextui-badge", (span) => span.textContent.trim());
     const classString = await gradingElement.$eval("span.nextui-badge", (span) => span.className);
-    const colorType = classString.includes("color-success") ? "sahih" : classString.includes("color-warning") ? "majhul" : "daif";
+    if (classString.includes("color-success") || classString.includes("color-default")) {
+      colorType = "sahih";
+    } else if (classString.includes("color-warning")) {
+      colorType = "majhul";
+    } else {
+      colorType = "daif";
+    }
+    if (classString.includes("color-default")) {
+      console.log("Found color-default!");
+    }
     const author = await gradingElement.$eval("div.font-semibold", (div) => div.textContent.trim());
-    const authorFolder = author.split(" ").pop().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  
+    const authorFolder = author
+      .split(" ")
+      .pop()
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toLowerCase();
+
     hadith.gradings.push({
       grade,
       book: await gradingElement.$eval("div.text-center", (div) => div.textContent.trim()),
       author: await gradingElement.$eval("div.font-semibold", (div) => div.textContent.trim()),
     });
-  
+
     // Create a new hadith object with only the current grading
     const filteredGradings = [hadith.gradings[hadith.gradings.length - 1]];
     const filteredHadith = { ...hadith, gradings: filteredGradings };
@@ -63,13 +78,17 @@ const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapter
     if (!volumes.authors[authorFolder][colorType][volume]) volumes.authors[authorFolder][colorType][volume] = {};
     if (!volumes.authors[authorFolder][colorType][volume][book]) volumes.authors[authorFolder][colorType][volume][book] = {};
     if (!volumes.authors[authorFolder][colorType][volume][book][chapter]) volumes.authors[authorFolder][colorType][volume][book][chapter] = {};
-    if (!volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle]) volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle] = [];
+    if (!volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle])
+      volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle] = [];
 
     uniqueColorTypes.add(colorType); // Add this colorType to our set
     volumes.authors[authorFolder][colorType][volume][book][chapter][chapterTitle].push(filteredHadith);
   }
 
   // Now that we've processed all gradings, push the hadith to allAhadith and colorType
+  if (!volumes["allAhadith"][volume]) volumes["allAhadith"][volume] = {};
+  if (!volumes["allAhadith"][volume][book]) volumes["allAhadith"][volume][book] = {};
+  if (!volumes["allAhadith"][volume][book][chapter]) volumes["allAhadith"][volume][book][chapter] = {};
   if (!volumes["allAhadith"][volume][book][chapter][chapterTitle]) volumes["allAhadith"][volume][book][chapter][chapterTitle] = [];
   volumes.allAhadith[volume][book][chapter][chapterTitle].push(hadith);
 
@@ -84,12 +103,12 @@ const processGroupDiv = async (groupDiv, volumes, volume, book, chapter, chapter
 };
 
 const writeFiles = (volumes) => {
-  const ahadithPath = path.join(__dirname, 'ahadith');
+  const ahadithPath = path.join(__dirname, "ahadith");
   if (!fs.existsSync(ahadithPath)) {
     fs.mkdirSync(ahadithPath);
   }
 
-  const generalPath = path.join(ahadithPath, 'general');
+  const generalPath = path.join(ahadithPath, "general");
   if (!fs.existsSync(generalPath)) {
     fs.mkdirSync(generalPath);
   }
@@ -127,7 +146,7 @@ const writeFiles = (volumes) => {
     daif: {},
     noGradings: {},
     allAhadith: {},
-    authors: {}
+    authors: {},
   };
 
   while (true) {
