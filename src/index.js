@@ -6,7 +6,7 @@ const loadExistingData = require("./utils/loadExistingData");
 const findLastScraped = require("./utils/findLastScraped");
 const processBook = require("./utils/processBook");
 
-const STOP_AT_BOOK = 12;
+const STOP_AT_VOLUME = 9;
 
 const browserLaunchOptions = {
   headless: "new",
@@ -65,7 +65,7 @@ async function main() {
   };
   const existingData = [existingAuthors, existingSahih, existingMajhul, existingDaif, existingNoGradings, existingAllAhadith, existingDidNotInclude];
 
-  await processBook(browser, volumes, lastVolume, lastBook, lastChapter, STOP_AT_BOOK, existingData);
+  await processBook(browser, volumes, lastVolume, lastBook, lastChapter, STOP_AT_VOLUME, existingData);
 }
 
 main().catch((error) => {

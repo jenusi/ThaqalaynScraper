@@ -1,7 +1,7 @@
 const findGroupDiv = require("./findGroupDiv");
 const processChapter = require("./processChapter");
 
-async function processBook(browser, volumes, volume, book, chapter, STOP_AT_BOOK, existingData) {
+async function processBook(browser, volumes, volume, book, chapter, STOP_AT_VOLUME, existingData) {
   let consecutiveBookFailures = 0;
 
   let page = await browser.newPage();
@@ -17,8 +17,8 @@ async function processBook(browser, volumes, volume, book, chapter, STOP_AT_BOOK
   await page.setCacheEnabled(true);
 
   while (true) {
-    if (book === STOP_AT_BOOK) {
-      console.log(`Stopping at book ${STOP_AT_BOOK}.`);
+    if (volume === STOP_AT_VOLUME) {
+      console.log(`Stopping at book ${STOP_AT_VOLUME}.`);
       break;
     }
     chapter++;
