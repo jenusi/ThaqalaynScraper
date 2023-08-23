@@ -1,24 +1,18 @@
-async function findGroupDiv(page) {
-    let attempts = 0;
-    let foundGroupDiv = false;
-  
-    while (attempts < 3 && !foundGroupDiv) {
-      try {
-        const groupDivs = await page.$$('div[role="group"]');
-        if (groupDivs.length > 0) {
-          foundGroupDiv = true;
-        }
-      } catch (error) {
-        console.error(`Error: ${error}`);
-      }
-  
-      attempts++;
-      if (attempts > 1) {
-        console.log(`Retrying... (${attempts} attempts)`);
-      }
+exports.findGroupDiv = async (page) => {
+  let attempts = 0;
+  let groupDiv = null;
+
+  while (attempts < 3 && !groupDiv) {
+    try {
+      groupDiv = await page.$('div[role="group"]');
+    } catch (error) {
+      console.error(`Error: ${error}`);
     }
-  
-    return foundGroupDiv;
+
+    attempts++;
+    if (attempts > 1) {
+    }
   }
 
-  module.exports = findGroupDiv;
+  return groupDiv;
+};

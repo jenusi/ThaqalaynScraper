@@ -1,57 +1,47 @@
 const path = require("path");
-const fs = require("fs");
-const mergeData = require("./mergeData");
+const fs = require("fs").promises;
 
-const writeFiles = (volumes, existingAuthors, existingSahih, existingMajhul, existingDaif, existingNoGradings, existingAllAhadith, existingDidNotInclude) => {
-  const ahadithPath = path.join(__dirname, "./../ahadith");
-  if (!fs.existsSync(ahadithPath)) {
-    fs.mkdirSync(ahadithPath);
+exports.writeFiles = async (volumes, selectedBook) => {
+  const ahadithPath = path.join(__dirname, `./../ahadith/${selectedBook.name}`);
+  try {
+    await fs.access(ahadithPath);
+  } catch {
+    await fs.mkdir(ahadithPath, { recursive: true });
   }
 
   const generalPath = path.join(ahadithPath, "general");
-  if (!fs.existsSync(generalPath)) {
-    fs.mkdirSync(generalPath);
+  try {
+    await fs.access(generalPath);
+  } catch {
+    await fs.mkdir(generalPath);
   }
 
-  // Merge new data into existing general data
-  mergeData(existingSahih, volumes.sahih);
-  mergeData(existingMajhul, volumes.majhul);
-  mergeData(existingDaif, volumes.daif);
-  mergeData(existingNoGradings, volumes.noGradings);
-  mergeData(existingAllAhadith, volumes.allAhadith);
-  mergeData(existingDidNotInclude, volumes.didNotInclude);
+  const alBehbudiPath = path.join(ahadithPath, "albehbudi");
+  try {
+    await fs.access(alBehbudiPath);
+  } catch {
+    await fs.mkdir(alBehbudiPath);
+  }
 
-  // Save the merged general data
-  fs.writeFileSync(path.join(generalPath, "sahih.json"), JSON.stringify(existingSahih, null, 2));
-  fs.writeFileSync(path.join(generalPath, "majhul.json"), JSON.stringify(existingMajhul, null, 2));
-  fs.writeFileSync(path.join(generalPath, "daif.json"), JSON.stringify(existingDaif, null, 2));
-  fs.writeFileSync(path.join(generalPath, "no-gradings.json"), JSON.stringify(existingNoGradings, null, 2));
-  fs.writeFileSync(path.join(generalPath, "all-ahadith.json"), JSON.stringify(existingAllAhadith, null, 2));
-  fs.writeFileSync(path.join(generalPath, "did-not-include.json"), JSON.stringify(existingDidNotInclude, null, 2));
+  // Save the data without merging
+  await fs.writeFile(path.join(generalPath, "sahih.json"), JSON.stringify(volumes.sahih, null, 2));
+  await fs.writeFile(path.join(generalPath, "majhul.json"), JSON.stringify(volumes.majhul, null, 2));
+  await fs.writeFile(path.join(generalPath, "daif.json"), JSON.stringify(volumes.daif, null, 2));
+  await fs.writeFile(path.join(generalPath, "no-gradings.json"), JSON.stringify(volumes.noGradings, null, 2));
+  await fs.writeFile(path.join(generalPath, "all-ahadith.json"), JSON.stringify(volumes.allAhadith, null, 2));
+  await fs.writeFile(path.join(alBehbudiPath, "did-not-include.json"), JSON.stringify(volumes.didNotInclude, null, 2));
 
-  // Merge new data into existing data for authors
+  // Write author data
   for (const [authorFolder, authorVolumes] of Object.entries(volumes.authors)) {
-    if (!existingAuthors[authorFolder]) {
-      existingAuthors[authorFolder] = {
-        sahih: {},
-        majhul: {},
-        daif: {},
-      };
-    }
-
-    mergeData(existingAuthors[authorFolder].sahih, authorVolumes.sahih);
-    mergeData(existingAuthors[authorFolder].majhul, authorVolumes.majhul);
-    mergeData(existingAuthors[authorFolder].daif, authorVolumes.daif);
-
     const authorPath = path.join(ahadithPath, authorFolder);
-    if (!fs.existsSync(authorPath)) {
-      fs.mkdirSync(authorPath);
+    try {
+      await fs.access(authorPath);
+    } catch {
+      await fs.mkdir(authorPath);
     }
 
-    fs.writeFileSync(path.join(authorPath, "sahih.json"), JSON.stringify(existingAuthors[authorFolder].sahih, null, 2));
-    fs.writeFileSync(path.join(authorPath, "majhul.json"), JSON.stringify(existingAuthors[authorFolder].majhul, null, 2));
-    fs.writeFileSync(path.join(authorPath, "daif.json"), JSON.stringify(existingAuthors[authorFolder].daif, null, 2));
+    await fs.writeFile(path.join(authorPath, "sahih.json"), JSON.stringify(authorVolumes.sahih, null, 2));
+    await fs.writeFile(path.join(authorPath, "majhul.json"), JSON.stringify(authorVolumes.majhul, null, 2));
+    await fs.writeFile(path.join(authorPath, "daif.json"), JSON.stringify(authorVolumes.daif, null, 2));
   }
 };
-
-module.exports = writeFiles;

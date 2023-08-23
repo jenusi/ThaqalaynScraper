@@ -1,10 +1,9 @@
-const findGroupDiv = require("./findGroupDiv");
-const processChapter = require("./processChapter");
+const { findGroupDiv } = require("./findGroupDiv");
+const { processChapter } = require("./processChapter");
+const { writeFiles } = require("./writeFiles");
 
-async function processBook(browser, volumes, volume, book, chapter, STOP_AT_VOLUME, existingData) {
-  let consecutiveBookFailures = 0;
-
-  let page = await browser.newPage();
+const setupPage = async (browser) => {
+  const page = await browser.newPage();
   await page.setRequestInterception(true);
   page.on("request", (request) => {
     if (["image", "stylesheet", "font"].includes(request.resourceType())) {
@@ -13,14 +12,16 @@ async function processBook(browser, volumes, volume, book, chapter, STOP_AT_VOLU
       request.continue();
     }
   });
+  await page.setCacheEnabled(false);
+  return page;
+};
 
-  await page.setCacheEnabled(true);
+const processVolume = async (browser, page, volume, selectedBook, volumes) => {
+  let consecutiveBookFailures = 0;
+  let book = 0;
+  let chapter = 0;
 
   while (true) {
-    if (volume === STOP_AT_VOLUME) {
-      console.log(`Stopping at book ${STOP_AT_VOLUME}.`);
-      break;
-    }
     chapter++;
     const url = `https://thaqalayn.net/chapter/${volume}/${book}/${chapter}`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -29,23 +30,30 @@ async function processBook(browser, volumes, volume, book, chapter, STOP_AT_VOLU
     const foundGroupDiv = await findGroupDiv(page);
 
     if (foundGroupDiv) {
-      await processChapter(page, volumes, volume, book, chapter, existingData);
+      await processChapter(page, volumes, volume, book, chapter, foundGroupDiv);
       consecutiveBookFailures = 0;
     } else {
       consecutiveBookFailures++;
-      if (consecutiveBookFailures >= 3) {
-        consecutiveBookFailures = 0;
-        book = 0;
-        volume++;
-      } else {
-        book++;
-      }
+      if (consecutiveBookFailures >= 3) break;
+      book++;
       chapter = 0;
     }
   }
+  writeFiles(volumes, selectedBook);
+  console.log(`Wrote Volume: ${volume}\n To the Book: ${selectedBook.name}\n`);
+};
 
-  await page.close();
-  await browser.close();
-}
-
-module.exports = processBook;
+exports.processBook = async (browser, volumes, selectedVolumesAndBooks) => {
+  try {
+    for (const { number: volume, book: selectedBook } of selectedVolumesAndBooks) {
+      console.log(`Processing Volume ${volume}`);
+      let page = await setupPage(browser);
+      await processVolume(browser, page, volume, selectedBook, volumes);
+      await page.close();
+    }
+  } catch (err) {
+    console.error("An error occurred:", err);
+  } finally {
+    await browser.close();
+  }
+};
