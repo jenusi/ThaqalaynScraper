@@ -1,5 +1,7 @@
 const getHadithValues = require("./getHadithValues");
 
+const WAIT_TIME = require("./const.js").WAIT_TIME;
+
 async function getRoleGroup(browser, book) {
     let pageVolume = book.number;
     let pageBook = 1;
@@ -17,7 +19,7 @@ async function getRoleGroup(browser, book) {
         URL = `https://thaqalayn.net/chapter/${pageVolume}/${pageBook}/${pageChapter}`;
 
         try {
-            await page.goto(URL, { waitUntil: "networkidle2", timeout: 10000 });
+            await page.goto(URL, { waitUntil: "networkidle2", timeout: 2500 });
 
             const roleGroup = await page.$$('div[role="group"]');
 
@@ -33,7 +35,7 @@ async function getRoleGroup(browser, book) {
                     let grading;
 
                     try {
-                        grading = await group.waitForSelector('ul[class="m-4"]', { timeout: 2500, visible: true });
+                        grading = await group.waitForSelector('ul[class="m-4"]', { timeout: WAIT_TIME, visible: true });
                     } catch (error) {
                         console.log(`Couldn't find grading for group. Error: ${error}`);
                     }

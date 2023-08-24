@@ -1,6 +1,8 @@
 const sendBookToCheck = require("./sendBookToCheck.js");
 const fs = require("fs");
 
+const SELECTED_BOOKS = require("./const.js").SELECTED_BOOKS;
+
 const {
     AlKafi,
     MujamAlAhadithAlMutabara,
@@ -20,8 +22,6 @@ const {
     KitabAlZuhd,
     NahjAlBalagha,
 } = require("./books.js");
-
-const SELECTED_BOOKS = [AlKafi, MujamAlAhadithAlMutabara];
 
 async function main() {
     fs.rmSync('./ahadith', { recursive: true, force: true });
