@@ -2,6 +2,8 @@
 
 Thaqalayn Web Scraper is a Node.js application designed to scrape Islamic books from the [Thaqalayn](https://thaqalayn.net) website.
 
+Most probably the fastest web scraper that is available, as it opens a new browser for each volume. (As an example, al-Kafi would have 8 browsers open, each one working at the same time).
+
 ## Table of Contents
 
 1. [Requirements](#requirements)
