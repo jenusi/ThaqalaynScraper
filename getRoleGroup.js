@@ -1,12 +1,28 @@
 const getHadithValues = require("./getHadithValues");
+const { WAIT_TIME, MAX_RETRIES, SLEEP_TIME } = require("./const.js");
 
-const WAIT_TIME = require("./const.js").WAIT_TIME;
+async function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function navigateWithRetries(page, URL) {
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            await page.goto(URL, { waitUntil: "networkidle2", timeout: 10000 });
+            return true;
+        } catch (error) {
+            console.log(`Retrying URL: ${URL}. Attempt: ${attempt + 1}`);
+            await sleep(SLEEP_TIME);
+        }
+    }
+    return false;
+}
 
 async function getRoleGroup(browser, book) {
-    let pageVolume = book.number;
-    let pageBook = 1;
-    let pageChapter = 1;
-    let didntFind = 0;
+    let currentVolume = book.number;
+    let currentBook = 0;
+    let currentChapter = 1;
+    let consecutiveFailures = 0;
     let URL;
 
     const page = await browser.newPage();
@@ -15,40 +31,46 @@ async function getRoleGroup(browser, book) {
         localStorage.setItem("expandAllGradings", "true");
     });
 
-    while (didntFind < 5) {
-        URL = `https://thaqalayn.net/chapter/${pageVolume}/${pageBook}/${pageChapter}`;
+    while (consecutiveFailures < 5) {
+        URL = `https://thaqalayn.net/chapter/${currentVolume}/${currentBook}/${currentChapter}`;
+
+        const navigationSuccess = await navigateWithRetries(page, URL);
+        if (!navigationSuccess) {
+            console.error(`Failed to navigate to URL after ${MAX_RETRIES} retries: ${URL}`);
+            break;
+        }
 
         try {
-            await page.goto(URL, { waitUntil: "networkidle2", timeout: 2500 });
+            const roleGroupElements = await page.$$('div[role="group"]');
 
-            const roleGroup = await page.$$('div[role="group"]');
-
-            if (roleGroup.length === 0) {
-                console.log(`Didn't find it. Incrementing pageBook from ${pageBook} to ${pageBook + 1}. The Current URL is: ${URL}`);
-                didntFind++;
-                pageChapter = 1;
-                pageBook++;
+            if (roleGroupElements.length === 0) {
+                consecutiveFailures++;
+                console.log(`Didn't find it. Incrementing currentBook from ${currentBook} to ${currentBook + 1}. Current URL: ${URL}`);
+                currentChapter = 1;
+                currentBook++;
             } else {
-                didntFind = 0;
+                consecutiveFailures = 0;
 
-                for (const group of roleGroup) {
-                    let grading;
-
+                for (const group of roleGroupElements) {
                     try {
-                        grading = await group.waitForSelector('ul[class="m-4"]', { timeout: WAIT_TIME, visible: true });
-                    } catch (error) {
-                        console.log(`Couldn't find grading for group. Error: ${error}`);
-                    }
+                        await group.waitForSelector('ul[class="m-4"]', { timeout: WAIT_TIME, visible: true });
 
-                    await getHadithValues(group, page, pageVolume, pageBook, pageChapter, book.book.name, grading);
+                        const gradings = await group.$$('ul[class="m-4"]');
+
+                        await getHadithValues(group, page, currentVolume, currentBook, currentChapter, book.book.name, gradings);
+                    } catch (error) {
+                        console.debug(`Error in grading: ${error}`);
+                        await getHadithValues(group, page, currentVolume, currentBook, currentChapter, book.book.name);
+                    }
                 }
 
-                pageChapter++;
+                currentChapter++;
             }
         } catch (error) {
             console.log(`An error occurred while processing URL: ${URL}. Error: ${error}`);
-            didntFind++;
+            consecutiveFailures++;
         }
+        await sleep(SLEEP_TIME);
     }
 
     console.log("Finished for URL: ", URL);

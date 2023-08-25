@@ -1,9 +1,20 @@
-const fs = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
 
-function createDirIfNotExistent(dir) {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+async function ensureDirExists(dirPath) {
+    try {
+        await fs.access(dirPath);
+    } catch (error) {
+        await fs.mkdir(dirPath, { recursive: true });
+    }
+}
+
+async function readJsonFile(filePath) {
+    try {
+        const data = await fs.readFile(filePath, "utf-8");
+        return JSON.parse(data);
+    } catch (error) {
+        return {};
     }
 }
 
@@ -17,44 +28,53 @@ async function authorSpecificWriteFile(
     pageVolume,
     pageBook,
     pageChapter,
+    gradingGeneral,
     gradingText,
-    gradingTextText,
     bookText,
     authorText,
 ) {
-    let authorName = authorText.split(" ");
-    authorName = authorName[authorName.length - 1];
-    authorName = authorName.replace(/[^a-zA-Z ]/g, "");
-    createDirIfNotExistent(`ahadith/${bookName}/${pageVolume}/${authorName}`);
-    const filePath = path.join(__dirname, `ahadith/${bookName}/${pageVolume}/${authorName}/${gradingText}.json`);
-    const newData = {
-        [pageBook]: {
-            [pageChapter]: {
-                [hadithNumber]: {
-                    title: title,
-                    arabicText: arabicText,
-                    englishText: englishText,
-                    href: href,
-                    grading: {
-                        gradeEnglish: gradingText,
-                        gradeArabic: gradingTextText.trim(),
-                        book: bookText,
-                        author: authorText,
+    try {
+        const filePath = path.join(".", "ahadith", bookName, pageVolume.toString(), authorText, `${gradingGeneral}.json`);
+        const dirPath = path.dirname(filePath);
+
+        await ensureDirExists(dirPath);
+        const existingData = await readJsonFile(filePath);
+
+        const volumeKey = `Volume #${pageVolume}`;
+        const bookKey = `Book #${pageBook}`;
+        const chapterKey = `Chapter #${pageChapter}`;
+        const hadithObject = {
+            [volumeKey]: {
+                [bookKey]: {
+                    [chapterKey]: {
+                        [hadithNumber]: {
+                            Title: title,
+                            Link: href,
+                            "Arabic Text": arabicText,
+                            "English Text": englishText,
+                            Grading: {
+                                "English Grade": gradingGeneral,
+                                "Arabic Grade": gradingText,
+                                Scholar: authorText,
+                                Book: bookText,
+                            },
+                        },
                     },
                 },
             },
-        },
-    };
+        };
 
-    if (fs.existsSync(filePath)) {
-        const existingData = JSON.parse(fs.readFileSync(filePath, "utf8"));
-        existingData.push(newData);
+        // Merge the existing and new data
+        existingData[volumeKey] = existingData[volumeKey] || {};
+        existingData[volumeKey][bookKey] = existingData[volumeKey][bookKey] || {};
+        existingData[volumeKey][bookKey][chapterKey] = existingData[volumeKey][bookKey][chapterKey] || {};
 
-        fs.writeFileSync(filePath, JSON.stringify(existingData, null, 4), "utf8");
-    } else {
-        fs.writeFileSync(filePath, JSON.stringify([newData], null, 4), "utf8");
+        existingData[volumeKey][bookKey][chapterKey][hadithNumber] = hadithObject[volumeKey][bookKey][chapterKey][hadithNumber];
+
+        await fs.writeFile(filePath, JSON.stringify(existingData, null, 2), "utf-8");
+    } catch (error) {
+        console.error(`An error occurred: ${error}`);
     }
-    return;
 }
 
 module.exports = authorSpecificWriteFile;
