@@ -18,7 +18,7 @@ const {
     NahjAlBalagha,
 } = require("./books.js");
 
-const SELECTED_BOOKS = [NahjAlBalagha];
+const SELECTED_BOOKS = [KitabAlGhaybaFirst, KitabAlGhaybaSecond, ThawabAlAmalWaIqabAlAmal, KamilAlZiyarat, FadailAlShia, SifatAlShia, MaaniAlAkhbar, KitabAlMumin, KitabAlZuhd];
 
 // [AlKafi, MujamAlAhadithAlMutabara, AlKhisal, UyunAkhbarAlRida, AlAmali, AlTawhid, KitabAlDuafa, KitabAlGhaybaFirst, KitabAlGhaybaSecond, ThawabAlAmalWaIqabAlAmal, KamilAlZiyarat, FadailAlShia, SifatAlShia, MaaniAlAkhbar, KitabAlMumin, KitabAlZuhd, NahjAlBalagha];
 
